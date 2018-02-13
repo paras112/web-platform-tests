@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<script src="/common/get-host-info.sub.js"></script>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="resources/test-helpers.sub.js"></script>
+
+<script>
+const script = 'resources/multipart-cors.js';
+const scope = 'resources/multipart-cors-iframe.html';
+let frame;
+
+promise_test(t => {
+    return service_worker_unregister_and_register(t, script, scope)
+      .then(registration => {
+          promise_test(() => {
+              if (frame) {
+                frame.remove();
+              }
+              return registration.unregister();
+            }, 'restore global state');
+
+          return wait_for_state(t, registration.installing, 'activated');
+        })
+      .then(() => with_iframe(scope))
+      .then(f => {
+          frame = f;
+      });
+  }, 'initialize global state');
+
+promise_test(t => {
+    return frame.contentWindow.load_multipart_image('same-origin-multipart-image')
+      .then(img => frame.contentWindow.get_image_data(img))
+      .then(img_data => {
+          assert_equals(img_data.data[0], 255);
+          assert_equals(img_data.data[1], 0);
+          assert_equals(img_data.data[2], 0);
+          assert_equals(img_data.data[3], 255);
+      });
+  }, 'same-origin multipart image via SW should be readable');
+
+promise_test(t => {
+    const promise = frame.contentWindow.load_multipart_image('cross-origin-multipart-image-with-no-cors')
+      .then(img => frame.contentWindow.get_image_data(img));
+    return promise_rejects(t, new DOMException('', 'SecurityError'), promise);
+  }, 'cross-origin multipart image with no-cors via SW should not be readable');
+
+promise_test(t => {
+    const promise = frame.contentWindow.load_multipart_image('cross-origin-multipart-image-with-cors')
+      .then(img => frame.contentWindow.get_image_data(img));
+    return promise_rejects(t, new DOMException('', 'TypeError'), promise);
+  }, 'Fetching cross-origin multipart image without no-cors via SW should not succeed');
+</script>
