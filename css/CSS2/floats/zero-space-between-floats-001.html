@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<title>A zero-width new formatting context should fit in a zero-width layout opportunity between floats</title>
+<link rel="author" title="Morten Stenshorne" href="mstensho@chromium.org">
+<link rel="help" href="https://www.w3.org/TR/CSS22/visuren.html#float-position" title="9.5.1 Positioning the float: the 'float' property">
+<link rel="match" href="../../reference/ref-filled-green-200px-square.html">
+<p>Test passes if there is a filled green square and <strong>no red</strong>.</p>
+<div style="width:200px;">
+  <div style="float:left; width:100px; height:200px; background:green;"></div>
+  <div style="float:right; width:100px; height:200px; background:red;"></div>
+  <div style="display:flow-root; width:0;">
+    <div style="position:relative; width:100px; height:200px; background:green;"></div>
+  </div>
+</div>
