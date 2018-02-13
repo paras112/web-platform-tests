@@ -49,7 +49,7 @@ class FakeBluetooth {
   constructor() {
     this.fake_bluetooth_ptr_ = new bluetooth.mojom.FakeBluetoothPtr();
     Mojo.bindInterface(bluetooth.mojom.FakeBluetooth.name,
-        mojo.makeRequest(this.fake_bluetooth_ptr_).handle, "process");
+        mojo.makeRequest(this.fake_bluetooth_ptr_).handle, 'process');
   }
 
   // Set it to indicate whether the platform supports BLE. For example,
@@ -85,6 +85,12 @@ class FakeBluetooth {
   async allResponsesConsumed() {
     let {consumed} = await this.fake_bluetooth_ptr_.allResponsesConsumed();
     return consumed;
+  }
+
+  // Returns a promise that resolves with a FakeBluetoothChooser that clients
+  // can use to simulate chooser events.
+  async setBluetoothManualChooser(enable) {
+    return Promise.resolve(new FakeBluetoothChooser(enable));
   }
 }
 
@@ -374,6 +380,22 @@ class FakeRemoteGATTDescriptor {
         gatt_code, value, ...this.ids_);
 
     if (!success) throw 'setNextReadDescriptorResponse failed';
+  }
+}
+
+class FakeBluetoothChooser {
+  constructor(enable) {
+    this.fake_bluetooth_chooser_ptr_ =
+        new content.mojom.FakeBluetoothChooserPtr();
+    Mojo.bindInterface(content.mojom.FakeBluetoothChooser.name,
+        mojo.makeRequest(this.fake_bluetooth_chooser_ptr_).handle, 'process');
+    this.setBluetoothManualChooser(enable);
+  }
+
+  // Sets Bluetooth chooser to be controlled manually.
+  async setBluetoothManualChooser(enable) {
+    if (typeof enable !== 'boolean') throw 'Type Not Supported';
+    await this.fake_bluetooth_chooser_ptr_.setBluetoothManualChooser(enable);
   }
 }
 
