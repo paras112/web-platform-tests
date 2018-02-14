@@ -1,3 +1,9 @@
+def main(request, response):
+  header = [("Content-Type", "text/html")]
+  if 'sandbox' in request.GET:
+    header.append(('Content-Security-Policy',
+                   'sandbox %s' % request.GET['sandbox']))
+  return (header, """
 <script>
 function with_iframe(url) {
   return new Promise(function(resolve) {
@@ -54,3 +60,4 @@ window.onmessage = function (e) {
       });
 };
 </script>
+""")

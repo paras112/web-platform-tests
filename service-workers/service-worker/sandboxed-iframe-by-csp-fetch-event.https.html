@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<title>ServiceWorker FetchEvent for sandboxed iframe.</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="resources/test-helpers.sub.js"></script>
+<body>
+<script>
+var lastCallbackId = 0;
+var callbacks = {};
+function postMessageAndWaitResult(frame) {
+  return new Promise(function(resolve) {
+    var id = ++lastCallbackId;
+    callbacks[id] = resolve;
+    frame.contentWindow.postMessage({id:id}, '*');
+  });
+}
+
+window.onmessage = function (e) {
+  message = e.data;
+  var id = message['id'];
+  var callback = callbacks[id];
+  delete callbacks[id];
+  callback(message['result']);
+};
+
+promise_test(function(t) {
+    var SCOPE = 'resources/sandboxed-iframe-fetch-event-iframe.py';
+    var SCRIPT = 'resources/sandboxed-iframe-fetch-event-worker.js';
+    var frames = [];
+    var worker;
+    return service_worker_unregister_and_register(t, SCRIPT, SCOPE)
+      .then(function(registration) {
+          worker = registration.installing;
+          return wait_for_state(t, registration.installing, 'activated');
+        })
+      .then(function(result) {
+          return with_iframe(SCOPE + '?sandbox=allow-scripts&script-header');
+        })
+      .then(function(frame) {
+          frames.push(frame);
+          return postMessageAndWaitResult(frame);
+        })
+      .then(function(result) {
+          assert_equals(result, 'done');
+          return new Promise(function(resolve) {
+              var channel = new MessageChannel();
+              channel.port1.onmessage = function(msg) {
+                  resolve(msg);
+                };
+              worker.postMessage({port: channel.port2}, [channel.port2]);
+            });
+        })
+      .then(function(msg) {
+          for (var frame of frames) {
+            frame.remove();
+          }
+          var expected_base_url = new URL(SCOPE, location.href).href;
+          var request_set = {};
+          for (var request of msg.data.requests) {
+            request_set[request] = true;
+          }
+          assert_false(
+              expected_base_url + '?sandbox=allow-scripts&script-header_fetch' in request_set,
+              'The fetch request from iframe sandboxed by CSP header with allow-scripts ' +
+              'flag should not be handled by SW.');
+          assert_false(
+              expected_base_url + '?sandbox=allow-scripts&script-header_workerfetch' in request_set,
+              'The fetch request from worker from iframe sandboxed by CSP ' +
+              'header with allow-scripts flag should not be handled by SW.');
+          assert_false(
+              expected_base_url + '?sandbox=allow-scripts&script-header_iframe' in request_set,
+              'The request for normal iframe inside iframe sandboxed by CSP ' +
+              'header with allow-scripts flag should not be handled by SW.');
+          assert_false(
+              expected_base_url + '?sandbox=allow-scripts&script-header_script' in request_set,
+              'The request for sandboxed iframe with allow-scripts flag ' +
+              'inside iframe sandboxed by CSP header with allow-scripts flag ' +
+              'should not be handled by SW.');
+          assert_false(
+              expected_base_url + '?sandbox=allow-scripts&script-header_script-origin' in request_set,
+              'The request for sandboxed iframe with allow-scripts and ' +
+              'allow-same-origin flag inside iframe sandboxed by CSP header ' +
+              'with allow-scripts flag should not be handled by SW.');
+          return service_worker_unregister_and_done(t, SCOPE);
+        });
+}, 'ServiceWorker FetchEvent for iframe sandboxed by CSP header.')
+</script>
+</body>

@@ -18,13 +18,13 @@ function postMessageAndWaitResult(frame) {
 window.onmessage = function (e) {
   message = e.data;
   var id = message['id'];
-  var calback = callbacks[id];
+  var callback = callbacks[id];
   delete callbacks[id];
-  calback(message['result']);
+  callback(message['result']);
 };
 
 promise_test(function(t) {
-    var SCOPE = 'resources/sandboxed-iframe-fetch-event-iframe.html';
+    var SCOPE = 'resources/sandboxed-iframe-fetch-event-iframe.py';
     var SCRIPT = 'resources/sandboxed-iframe-fetch-event-worker.js';
     var frames = [];
     var worker;
